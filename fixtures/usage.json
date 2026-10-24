@@ -1,0 +1,23 @@
+[
+  {
+    "provider": "codex",
+    "source": "codex-cli",
+    "usage": {
+      "loginMethod": "plus",
+      "updatedAt": "2026-10-24T08:45:59Z",
+      "primary": {"windowMinutes": 300, "usedPercent": 60, "resetsAt": "2026-10-24T12:28:06Z"},
+      "secondary": {"windowMinutes": 10080, "usedPercent": 9, "resetsAt": "2026-10-31T07:28:06Z"}
+    }
+  },
+  {
+    "provider": "claude",
+    "source": "claude",
+    "usage": {
+      "loginMethod": "Pro",
+      "updatedAt": "2026-10-24T08:46:17Z",
+      "dataConfidence": "percentOnly",
+      "primary": {"windowMinutes": 300, "usedPercent": 0},
+      "secondary": {"windowMinutes": 10080, "usedPercent": 100, "resetsAt": "2026-10-25T23:00:00Z"}
+    }
+  }
+]

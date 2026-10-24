@@ -1,0 +1,13 @@
+{
+  "name": "kobo-token-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node render-dashboard.mjs",
+    "test": "node --test usage-model.test.mjs"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

@@ -1,0 +1,4 @@
+[
+  {"provider":"codex","error":{"code":401,"message":"authentication required"}},
+  {"provider":"claude","usage":{"updatedAt":"2026-10-24T08:46:17Z","loginMethod":"Pro"}}
+]
