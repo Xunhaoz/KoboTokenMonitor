@@ -35,13 +35,13 @@ curl --fail -H "Authorization: Bearer $DASHBOARD_TOKEN" \
 curl --fail http://127.0.0.1:8080/healthz
 ```
 
-Kobo 下載同樣帶 `Authorization: Bearer ...`。服務沒有檔案瀏覽功能，不提供原始登入檔或 email。`/healthz` 不需登入，只表示排程與圖片生成是否運作；兩家登入是否有效，請看受保護的 `/status`。提供 PNG 時不會觸發額外查詢。
+Kobo 下載同樣帶 `Authorization: Bearer ...`。服務沒有檔案瀏覽功能，不提供原始登入檔或 email。`/healthz` 不需登入，只表示排程與圖片生成是否運作；兩家登入是否有效，請看受保護的 `/status`。提供 PNG 時不會觸發額外用量查詢；每次 GET／HEAD 會檢查圖片，同一分鐘共用快取，跨分鐘時用已保存的用量和當下時間重新產圖。新用量寫入後，即使仍在同一分鐘也會重新產圖。並行下載共用同一次產圖；產圖失敗時保留並提供舊圖片，沒有舊圖片則回傳 503。Kobo 仍須每分鐘下載並顯示圖片，畫面時鐘才會每分鐘更新；各家的資料時間保留原測量時間。
 
 ### 排程與認證
 
 | 設定 | 預設 | 行為 |
 | --- | --- | --- |
-| `POLL_INTERVAL_SECONDS` | 120 | 啟動立即更新；之後以約兩分鐘為間隔查詢並產圖，慢任務不重疊 |
+| `POLL_INTERVAL_SECONDS` | 60 | 啟動立即更新；之後以約一分鐘為間隔查詢並產圖，慢任務不重疊；限流時仍遵守退避 |
 | `CLI_TIMEOUT_SECONDS` | 45 | 每個 CLI 呼叫的最長時間，超時終止整個子程序群組 |
 | `AUTH_CHECK_INTERVAL_SECONDS` | 86400 | 在收集循環中，每日執行一次認證恢復／檢查路徑 |
 

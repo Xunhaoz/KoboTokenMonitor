@@ -11,7 +11,7 @@ services:
     restart: unless-stopped
     environment:
       DASHBOARD_TOKEN: ${DASHBOARD_TOKEN:?Set DASHBOARD_TOKEN in .env (at least 24 characters)}
-      POLL_INTERVAL_SECONDS: "120"
+      POLL_INTERVAL_SECONDS: "60"
       CLI_TIMEOUT_SECONDS: "45"
       AUTH_CHECK_INTERVAL_SECONDS: "86400"
     ports:

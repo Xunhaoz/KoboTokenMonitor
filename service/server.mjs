@@ -10,13 +10,30 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 export async function atomicJson(path,value){
   const tmp=path+'.tmp';await writeFile(tmp,JSON.stringify(value),{mode:0o600});await rename(tmp,path);
 }
-export function createApp({dataDir,token,interval=120000,timeout=45000,collector=new Collector({timeout}),execute=run}) {
+export function createApp({dataDir,token,interval=60000,timeout=45000,collector=new Collector({timeout}),execute=run,now=Date.now}) {
   let running=false,timer,stopped=false;
+  let revision=0,imageRevision=-1,imageMinute=null,rendering=null;
   const health={startedAt:new Date().toISOString(),lastCycleAt:null,lastImageAt:null,running:false,providers:{}};
   const image=resolve(dataDir,'usage.png'),input=resolve(dataDir,'usage.json');
   async function initialize(){
     await mkdir(dataDir,{recursive:true});
     try {const data=JSON.parse(await readFile(input,'utf8'));if(Array.isArray(data))collector.restore(data);}catch{}
+  }
+  async function ensureImage(){
+    // Share one renderer across downloads and collection cycles. If data changes
+    // during a render, render again before declaring the cache current.
+    while(imageRevision!==revision || imageMinute!==Math.floor(now()/60000)){
+      if(!rendering){
+        const targetRevision=revision,at=now(),minute=Math.floor(at/60000);
+        rendering=(async()=>{
+          const rendered=await execute(process.execPath,[resolve(root,'render-dashboard.mjs'),'--input',input,'--at',new Date(at).toISOString(),'--output',image],{timeout:30000,cwd:root});
+          if(rendered.code!==0 || rendered.reason)throw Error('render_failed');
+          imageRevision=targetRevision;imageMinute=minute;
+          health.lastImageAt=new Date(now()).toISOString();health.renderError=null;
+        })().catch(error=>{health.renderError='update_failed';throw error;}).finally(()=>{rendering=null;});
+      }
+      await rendering;
+    }
   }
   async function cycle(){
     if(running||stopped)return;
@@ -26,13 +43,12 @@ export function createApp({dataDir,token,interval=120000,timeout=45000,collector
         try{return await collector.collect(id);}catch{return {provider:id,error:{code:'query_failed'}};}
       }));
       await atomicJson(input,records);
-      const rendered=await execute(process.execPath,[resolve(root,'render-dashboard.mjs'),'--input',input,'--at','now','--output',image],{timeout:30000,cwd:root});
-      if(rendered.code!==0 || rendered.reason)throw Error('render_failed');
-      health.lastImageAt=new Date().toISOString();health.renderError=null;
+      revision++;
       health.providers=Object.fromEntries(records.map(r=>[r.provider,{
         status:r.error?.code||(r.usage?.updatedAt && Date.now()-Date.parse(r.usage.updatedAt)<=600000?'ok':'stale'),
         measuredAt:r.usage?.updatedAt||null,...r.collection
       }]));
+      await ensureImage();
     }catch{health.renderError='update_failed';}
     finally{
       health.lastCycleAt=new Date().toISOString();running=false;health.running=false;
@@ -58,6 +74,8 @@ export function createApp({dataDir,token,interval=120000,timeout=45000,collector
       res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify(health));return;
     }
     if(path==='/usage.png'){
+      // Failed rendering leaves the previous atomically written PNG available.
+      try{await ensureImage();}catch{}
       try{const bytes=await readFile(image);res.writeHead(200,{'Content-Type':'image/png','Content-Length':bytes.length});res.end(req.method==='HEAD'?undefined:bytes);}
       catch{res.writeHead(503);res.end('Image not ready');}return;
     }
@@ -70,7 +88,7 @@ if(process.argv[1] && resolve(process.argv[1])===fileURLToPath(import.meta.url))
   const number=(key,fallback,min)=>{const value=Number(process.env[key]??fallback);if(!Number.isFinite(value)||value<min)throw Error(`Invalid ${key}`);return value;};
   const token=process.env.DASHBOARD_TOKEN_FILE?(await readFile(process.env.DASHBOARD_TOKEN_FILE,'utf8')).trim():process.env.DASHBOARD_TOKEN;
   if(!token || token.length<24)throw Error('DASHBOARD_TOKEN must contain at least 24 characters');
-  const interval=number('POLL_INTERVAL_SECONDS',120,10)*1000;
+  const interval=number('POLL_INTERVAL_SECONDS',60,10)*1000;
   const timeout=number('CLI_TIMEOUT_SECONDS',45,1)*1000;
   const dataDir=resolve(process.env.DATA_DIR||'data');
   for(const path of [process.env.CODEX_HOME,process.env.CLAUDE_CONFIG_DIR,process.env.XDG_CONFIG_HOME]){
