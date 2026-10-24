@@ -1,0 +1,25 @@
+name: kobo-token-monitor
+services:
+  monitor:
+    image: kobo-token-monitor:local
+    build:
+      context: .
+      args:
+        CODEXBAR_VERSION: "0.80.0"
+        CODEX_VERSION: "0.164.0"
+        CLAUDE_VERSION: "2.1.310"
+    restart: unless-stopped
+    environment:
+      DASHBOARD_TOKEN: ${DASHBOARD_TOKEN:?Set DASHBOARD_TOKEN in .env (at least 24 characters)}
+      POLL_INTERVAL_SECONDS: "120"
+      CLI_TIMEOUT_SECONDS: "45"
+      AUTH_CHECK_INTERVAL_SECONDS: "86400"
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
+    volumes:
+      - auth:/auth
+      - data:/data
+    stop_grace_period: 10s
+volumes:
+  auth:
+  data:

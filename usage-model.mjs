@@ -14,14 +14,15 @@ export function normalizeProvider(records, id, now, inputError = null) {
   const error = inputError || record?.error;
   const message = typeof error === 'string' ? error : JSON.stringify(error || '');
   const authError = /401|unauthori|authenticat|expired.*token|token.*expired/i.test(message);
-  const primary = error ? null : percentage(usage.primary);
-  const secondary = error ? null : percentage(usage.secondary);
+  const retained = record?.retained === true;
+  const primary = error && !retained ? null : percentage(usage.primary);
+  const secondary = error && !retained ? null : percentage(usage.secondary);
   const updatedAt = timestamp(usage.updatedAt);
   const stale = updatedAt !== null && +now - updatedAt > 600_000;
   const future = updatedAt !== null && updatedAt - +now > 300_000;
   const quotaReached = secondary === 100;
   let state = 'ok';
-  if (error) state = authError ? 'authentication_required' : 'error';
+  if (error) state = authError ? 'authentication_required' : retained ? 'stale' : 'error';
   else if (primary === null && secondary === null) state = 'missing';
   else if (stale) state = 'stale';
   else if (future || updatedAt === null || primary === null || secondary === null) state = 'partial';
@@ -29,6 +30,6 @@ export function normalizeProvider(records, id, now, inputError = null) {
   const captions = {ok:'訂閱用量', missing:'尚無用量資料', error:'查詢失敗',
     authentication_required:'需要重新登入', stale:'資料已過期', partial:'資料不完整', quota_reached:'週額度已滿'};
   return {usage,primary,secondary,updatedAt,state,caption:captions[state],quotaReached,
-    resetPrimary:error?null:usage.primary?.resetsAt,
-    resetSecondary:error?null:usage.secondary?.resetsAt};
+    resetPrimary:error&&!retained?null:usage.primary?.resetsAt,
+    resetSecondary:error&&!retained?null:usage.secondary?.resetsAt};
 }

@@ -32,3 +32,12 @@ test('weekly exhaustion remains visible even when the five-hour value is zero',(
   const model=normalizeProvider([{provider:'claude',usage}], 'claude', now);
   assert.equal(model.state,'quota_reached');assert.equal(model.primary,0);assert.equal(model.quotaReached,true);
 });
+
+test('retained snapshot remains visible with auth error and original timestamp',()=>{
+  const original='2026-10-24T08:00:00Z';
+  const model=normalizeProvider([{provider:'codex',retained:true,error:{code:'authentication_required'},
+    usage:{...usage,updatedAt:original}}], 'codex', now);
+  assert.equal(model.state,'authentication_required');
+  assert.equal(model.primary,0);
+  assert.equal(model.updatedAt,Date.parse(original));
+});

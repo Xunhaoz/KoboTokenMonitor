@@ -2,3 +2,7 @@ node_modules/
 output/
 .DS_Store
 *.local.json
+data/
+.env
+.env.*
+!.env.example
