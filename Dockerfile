@@ -1,3 +1,10 @@
+FROM node:24-bookworm-slim AS frontend-build
+WORKDIR /build
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY frontend/ ./frontend/
+RUN npm run build
+
 FROM node:24-bookworm-slim
 ARG TARGETARCH
 ARG CODEXBAR_VERSION=0.80.0
@@ -26,6 +33,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY render-dashboard.mjs usage-model.mjs ./
 COPY service/ ./service/
+COPY --from=frontend-build /build/frontend/dist ./frontend/dist
 RUN mkdir -p /auth/.codex /auth/.claude /auth/.config /data && chown -R node:node /auth /data
 ENV NODE_ENV=production HOME=/auth CODEX_HOME=/auth/.codex \
     CLAUDE_CONFIG_DIR=/auth/.claude XDG_CONFIG_HOME=/auth/.config \
