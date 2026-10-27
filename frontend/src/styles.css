@@ -215,11 +215,8 @@ button:focus-visible {
   background: #f0f0f2;
 }
 .quota-progress > div {
-  background: #27272a;
-  transition: transform 0.3s ease;
-}
-.quota-full .quota-progress > div {
-  background: #dc2626;
+  background: var(--usage-color, #27272a);
+  transition: transform 0.3s ease, background-color 0.3s ease;
 }
 .quota-full .quota-value {
   color: #b91c1c;

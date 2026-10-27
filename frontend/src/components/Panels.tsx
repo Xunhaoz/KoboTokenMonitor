@@ -1,4 +1,5 @@
 import type { Provider, UsageWindow } from "../api/dashboard";
+import { usageColor } from "../lib/usage-color";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
@@ -83,7 +84,10 @@ function Quota({
   const value = window.usedPercent;
   const Label = inline ? "h4" : "h3";
   return (
-    <div className={`quota ${value === 100 ? "quota-full" : ""}`}>
+    <div
+      className={`quota ${value === 100 ? "quota-full" : ""}`}
+      style={{ "--usage-color": usageColor(value) } as React.CSSProperties}
+    >
       <div className="quota-heading">
         <Label>{inline ? windowLabel.replace(/用量$/, "") : windowLabel}</Label>
         <div
