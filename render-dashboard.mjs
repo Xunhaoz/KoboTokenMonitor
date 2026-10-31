@@ -61,7 +61,7 @@ function provider(record,name,y,color) {
   const alert=['error','authentication_required','stale','quota_reached'].includes(m.state);
   return `
     ${rect(64,y,10,360,color,2)}
-    ${text(0,0,name,Math.min(44, 340 / Math.max(1, [...name].length)),500,colors.muted,'start',`transform="translate(104 ${y + 8}) rotate(90)"`)}
+    ${text(0,0,name,Math.min(48, 640 / Math.max(1, [...name].length)),500,colors.muted,'start',`transform="translate(104 ${y + 8}) rotate(90)"`)}
     ${text(200,y+30,'五小時額度',32)}
     ${text(1008,y+30,caption,26,500,alert?colors.red:colors.muted,'end')}
     ${text(200,y+160,percent(pDisplay),128,500)}
