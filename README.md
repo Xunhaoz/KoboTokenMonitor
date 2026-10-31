@@ -78,7 +78,7 @@ master 預設綁定主機 `127.0.0.1:8080`，可透過 `.env` 的 `BIND_ADDRESS`
 | `/status` | `providers` 依 worker ID 分組的狀態 |
 | `/healthz` | master 排程與產圖健康檢查 |
 
-每個 worker 提供內部 `/snapshot` 與 `/healthz`，不提供網頁或 PNG。`/snapshot` 僅讀取快照，不觸發 CLI。master 驗證 worker ID 與 provider，重新篩選公開欄位；不提供 token、完整 email、登入檔或原始 CLI 輸出。`record.account` 為 `usage.accountEmail` 的 @ 前字串，未知時為 null；master 的 `providers[].account` 同步提供此欄位。網頁與 PNG 標題為 `codex - {{account}}` 或 `claude - {{account}}`，帳號未知時使用設定名稱。舊快照仍可讀取。
+每個 worker 提供內部 `/snapshot` 與 `/healthz`，不提供網頁或 PNG。`/snapshot` 僅讀取快照，不觸發 CLI。master 驗證 worker ID 與 provider，重新篩選公開欄位；不提供 token、完整 email、登入檔或原始 CLI 輸出。`record.account` 優先取 `usage.accountEmail`，缺少或無效時改取 `usage.identity.accountEmail`，只公開 @ 前字串，未知時為 null；master 的 `providers[].account` 同步提供此欄位。網頁與 PNG 標題為 `Codex - {{account}}` 或 `Claude - {{account}}`，帳號未知時使用設定名稱。舊快照仍可讀取。
 
 前端卡片包含用量、查詢、最近成功與重試狀態。網頁可自然往下捲動；PNG 在原本尺寸內，依 worker 數量等比例縮小並垂直堆疊，包含所有帳號，絕不增加圖片高度。Worker 越多文字越小。PNG 已測試 0、1、3、6 個 worker 的固定尺寸；實際電子看板的可讀性仍需裝置確認。
 
@@ -127,3 +127,5 @@ node render-dashboard.mjs --input my-usage.local.json --at now --output output/u
 產圖使用 `@resvg/resvg-js`，輸出 PNG 與 SVG；Linux 需 Noto CJK 字型，或使用 `KOBO_FONT` 指定字型檔。預設範例的時間取最新測量時間，正式產圖使用 `--at now`。
 
 測試涵蓋用量查詢、退避、帳號截取與保留、多 worker HTTP 整合、公開欄位篩選及固定 PNG 尺寸。執行 `npm test` 與 `npm run build` 驗證。
+
+若成功取得用量卻沒有可用帳號，worker 會記錄 `usage_account_missing`，僅含 provider、實際來源及兩個 email 欄位的狀態，不含 email 或憑證。可用 `docker compose logs claude-1` 檢查；不會為了補帳號執行額外認證查詢，也不沿用可能屬於不同登入帳號的舊名稱。

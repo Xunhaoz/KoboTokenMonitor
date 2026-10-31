@@ -70,3 +70,20 @@ test('timeout retains account and usage with backoff',async()=>{
   assert.equal(r.account,'private');assert.equal(r.error.code,'timeout');
   assert.equal(r.retained,true);assert.equal(Date.parse(r.collection.nextAttemptAt),now+120000);
 });
+
+test('Claude reads identity email when top-level email is absent or invalid',async()=>{
+  for(const accountEmail of [undefined,null,'','invalid']) {
+    const raw={provider:'claude',usage:{...sample.usage,accountEmail,identity:{accountEmail:'nested@example.com',token:'secret'}}};
+    const c=new Collector({execute:async()=>response(raw)});
+    const r=await c.collect('claude',now);
+    assert.equal(r.account,'nested');
+    assert.doesNotMatch(JSON.stringify(r),/@|secret|identity/);
+    c.restore([r]);assert.equal(c.snapshot('claude').account,'nested');
+  }
+});
+test('current top-level email wins and changed accounts replace prior identity',async()=>{
+  const records=['first@example.com','second@example.com'].map(accountEmail=>({provider:'claude',usage:{...sample.usage,accountEmail,identity:{accountEmail:'nested@example.com'}}}));
+  const c=new Collector({execute:async()=>response(records.shift())});
+  assert.equal((await c.collect('claude',now)).account,'first');
+  assert.equal((await c.collect('claude',now+60000)).account,'second');
+});

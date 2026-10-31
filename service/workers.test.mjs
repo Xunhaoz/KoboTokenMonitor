@@ -10,7 +10,7 @@ import { run } from './process.mjs';
 
 const specs = validateWorkers(['codex-1', 'codex-2', 'claude-1'].map(id => ({ id, name: id, provider: id.split('-')[0], url: 'http://localhost:8080' })));
 const sample = (spec, percent) => ({ workerId: spec.id, provider: spec.provider, account: spec.id,
-  usage: { updatedAt: new Date().toISOString(), primary: { usedPercent: percent }, secondary: { usedPercent: 40 } },
+  usage: { identity: { accountEmail: `${spec.id}@example.com` }, updatedAt: new Date().toISOString(), primary: { usedPercent: percent }, secondary: { usedPercent: 40 } },
   collection: { lastSuccessAt: new Date().toISOString() }, token: 'secret', email: 'private@example.com' });
 const listen = async server => { await new Promise(r => server.listen(0, '127.0.0.1', r)); return `http://127.0.0.1:${server.address().port}`; };
 
@@ -80,7 +80,7 @@ test('PNG dimensions remain 1072 × 1448 for zero, one, three and six workers', 
   const dir = await mkdtemp(join(tmpdir(), 'kobo-render-workers-'));
   try {
     for (const count of [0, 1, 3, 6]) {
-      const records = Array.from({ length: count }, (_, i) => ({ ...sample(specs[i % 3], i * 10), workerId: `worker-${i}`, account: `long-account-${i}-with-special-&-chars`, name: `Account ${i}` }));
+      const records = Array.from({ length: count }, (_, i) => ({ ...sample(specs[i % 3], i * 10), workerId: `worker-${i}`, usage: { ...sample(specs[i % 3], i * 10).usage, identity: undefined }, account: `long-account-${i}-with-special-&-chars`, name: `Account ${i}` }));
       const input = join(dir, 'input.json'), output = join(dir, 'usage.png');
       await writeFile(input, JSON.stringify(records));
       const result = await run(process.execPath, ['render-dashboard.mjs', '--input', input, '--output', output], { timeout: 30000 });
@@ -89,7 +89,7 @@ test('PNG dimensions remain 1072 × 1448 for zero, one, three and six workers', 
       assert.equal(png.readUInt32BE(16), 1072);
       assert.equal(png.readUInt32BE(20), 1448);
       const svg = await readFile(join(dir, 'usage.svg'), 'utf8');
-      for (let i = 0; i < count; i++) assert.ok(svg.includes(`${records[i].provider} - long-account-${i}-with-special-&amp;-chars`));
+      for (let i = 0; i < count; i++) assert.ok(svg.includes(`${records[i].provider === 'codex' ? 'Codex' : 'Claude'} - long-account-${i}-with-special-&amp;-chars`));
     }
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

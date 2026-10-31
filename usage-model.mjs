@@ -36,16 +36,20 @@ export function normalizeProvider(records, id, now, inputError = null) {
 
 // Only the local part is public; persisted snapshots already contain account.
 export function accountName(record) {
-  const email = record?.usage?.accountEmail;
-  if (email !== undefined) {
-    if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+$/.test(email.trim())) return null;
-    return email.trim().split('@')[0];
+  const emails = [record?.usage?.accountEmail, record?.usage?.identity?.accountEmail];
+  for (const email of emails) {
+    if (typeof email === 'string' && /^[^\s@]+@[^\s@]+$/.test(email.trim())) {
+      return email.trim().split('@')[0];
+    }
   }
+  // Raw identity fields must not fall back to a potentially stale persisted account.
+  if (emails.some(email => email !== undefined)) return null;
   const account = record?.account;
   return typeof account === 'string' && /^[^\s@]+$/.test(account) ? account : null;
 }
 
 export function displayName(record, fallback) {
   const account = accountName(record);
-  return ['codex', 'claude'].includes(record?.provider) && account ? `${record.provider} - ${account}` : fallback;
+  const providerName = { codex: 'Codex', claude: 'Claude' }[record?.provider];
+  return providerName && account ? `${providerName} - ${account}` : fallback;
 }

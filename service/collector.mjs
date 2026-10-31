@@ -44,7 +44,17 @@ export class Collector {
       const record=(Array.isArray(data)?data:[data]).find(r=>r?.provider===id);
       if(record?.error)return {error:classify(record.error),retryAfter:this.retryAfter(record.error)};
       const clean=sanitize(record,id);
-      if(clean)return {record:clean}; // Other provider failures may make CLI exit nonzero.
+      if(clean){
+        if(clean.account === null) {
+          const fieldState = value => value === undefined ? 'missing' : value === null ? 'null' : typeof value === 'string' ? 'invalid' : 'wrong_type';
+          const sources = new Set(['oauth', 'cli', 'claude', 'web', 'api', 'local']);
+          console.warn(JSON.stringify({event:'usage_account_missing',provider:id,
+            source:sources.has(record.source)?record.source:'other',
+            accountEmail:fieldState(record.usage?.accountEmail),
+            identityAccountEmail:fieldState(record.usage?.identity?.accountEmail)}));
+        }
+        return {record:clean}; // Other provider failures may make CLI exit nonzero.
+      }
     } catch {}
     return {error:classify(result.stderr+' '+result.stdout),retryAfter:this.retryAfter(result.stderr)};
   }

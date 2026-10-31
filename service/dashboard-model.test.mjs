@@ -68,9 +68,9 @@ test("public schema excludes identities, raw diagnostics and unrecognized error 
 test('account labels are shared with PNG and old records fall back',()=>{
   const data=dashboardModel([{...sample,account:'my-account'}],{}, {now});
   assert.equal(data.providers[0].account,'my-account');
-  assert.equal(data.providers[0].name,'codex - my-account');
+  assert.equal(data.providers[0].name,'Codex - my-account');
   assert.equal(dashboardModel([sample],{}, {now}).providers[0].name,'Codex');
   const claude=dashboardModel([{...sample,provider:'claude',account:'claude-user'}],{}, {now});
-  assert.equal(claude.providers[1].name,'claude - claude-user');
+  assert.equal(claude.providers[1].name,'Claude - claude-user');
   assert.equal(dashboardModel([],{}, {now}).providers[1].name,'Claude');
 });
