@@ -52,29 +52,40 @@ function meter(x,y,width,height,n,color) {
     ? text(x+width/2,y+height/2+8,'無資料',21,400,colors.muted,'middle')
     : rect(x,y,width*n/100,height,color,2));
 }
-function provider(id,name,y,color,plan) {
-  const m=normalizeProvider(records,id,now,inputError);
-  const {usage:u,primary:pDisplay,secondary:sDisplay,updatedAt:measured,caption}=m;
+function provider(record,name,y,color) {
+  const id = record.provider;
+  const m=normalizeProvider([record],id,now,inputError);
+  const {primary:pDisplay,secondary:sDisplay,updatedAt:measured,caption}=m;
   const weekFull=m.quotaReached;
   const alert=['error','authentication_required','stale','quota_reached'].includes(m.state);
-  const planName=typeof u.loginMethod==='string'?u.loginMethod.slice(0,16).toUpperCase():'—';
   return `
-    ${rect(64,y-30,8,48,color,2)}
-    ${text(94,y+9,name,51,500)}
-    ${text(id==='codex'?277:290,y+7,planName,24,500,colors.muted)}
-    ${text(1008,y+6,caption,29,500,alert?colors.red:colors.muted,'end')}
-    ${text(64,y+95,'五小時額度',32)}
-    ${text(64,y+226,percent(pDisplay),128,500)}
-    ${text(1008,y+157,pDisplay===null?'等待有效資料':'已使用',28,400,colors.muted,'end')}
-    ${text(1008,y+214,pDisplay===null?'—':reset(m.resetPrimary),29,400,colors.ink,'end')}
-    ${meter(64,y+255,944,34,pDisplay,color)}
-    ${text(64,y+357,'本週額度',32)}
-    ${text(1008,y+357,sDisplay===null?'—':`${percent(sDisplay)} 已使用`,43,500,colors.ink,'end')}
-    ${meter(64,y+384,944,22,sDisplay,weekFull?colors.red:color)}
-    ${text(64,y+452,sDisplay===null?'等待下一次成功更新':reset(m.resetSecondary),29,400,colors.muted)}
-    ${text(1008,y+452,measured!==null?`資料 ${parts(new Date(measured)).month}/${parts(new Date(measured)).day} ${clock(measured)}`:'更新時間未提供',26,400,colors.muted,'end')}
+    ${rect(64,y,10,360,color,2)}
+    ${text(0,0,name,Math.min(44, 340 / Math.max(1, [...name].length)),500,colors.muted,'start',`transform="translate(104 ${y + 8}) rotate(90)"`)}
+    ${text(200,y+30,'五小時額度',32)}
+    ${text(1008,y+30,caption,26,500,alert?colors.red:colors.muted,'end')}
+    ${text(200,y+160,percent(pDisplay),128,500)}
+    ${text(1008,y+100,pDisplay===null?'等待有效資料':'已使用',28,400,colors.muted,'end')}
+    ${text(1008,y+153,pDisplay===null?'—':reset(m.resetPrimary),29,400,colors.ink,'end')}
+    ${meter(200,y+185,808,30,pDisplay,color)}
+    ${text(200,y+270,'本週額度',32)}
+    ${text(1008,y+270,sDisplay===null?'—':`${percent(sDisplay)} 已使用`,43,500,colors.ink,'end')}
+    ${meter(200,y+295,808,22,sDisplay,weekFull?colors.red:color)}
+    ${text(200,y+360,sDisplay===null?'等待下一次成功更新':reset(m.resetSecondary),27,400,colors.muted)}
+    ${text(1008,y+360,measured!==null?`資料 ${parts(new Date(measured)).month}/${parts(new Date(measured)).day} ${clock(measured)}`:'更新時間未提供',24,400,colors.muted,'end')}
   `;
 }
+const cards = records.some(r => r.workerId)
+  ? records
+  : records.length === 0 && !inputError ? [] : ['codex', 'claude'].map(id => records.find(r => r.provider === id) || {provider:id});
+const available = 1138;
+const cell = available / Math.max(cards.length, 1);
+const scale = Math.min(1, cell * 0.95 / 400);
+const stack = cards.map((r, i) => {
+  const name = r.name || (r.provider === 'codex' ? 'Codex' : 'Claude');
+  const x = (1072 - 1072 * scale) / 2;
+  const y = 222 + i * cell + (cell - 400 * scale) / 2;
+  return `<g transform="translate(${x} ${y}) scale(${scale})">${provider(r, name, 20, r.provider === 'codex' ? colors.green : colors.orange)}</g>` + (i < cards.length - 1 ? rule(222 + (i + 1) * cell) : '');
+}).join('');
 const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1072" height="1448" viewBox="0 0 1072 1448" role="img" aria-label="Codex 與 Claude 訂閱用量">
   <rect width="1072" height="1448" fill="#FFFFFF"/>
   <g font-family="Arial, Noto Sans CJK TC, Heiti TC, sans-serif">
@@ -83,9 +94,7 @@ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1072" height="1448" vi
     ${text(64,162,'用量一覽',64,500)}
     ${text(1008,158,`${date.hour}:${date.minute}`,51,500,colors.ink,'end')}
     ${rule(205)}
-    ${provider('codex','Codex',285,colors.green,'Plus')}
-    ${rule(790)}
-    ${provider('claude','Claude',872,colors.orange,'Pro')}
+    ${stack || text(536,780,'尚未設定 worker',40,500,colors.muted,'middle')}
     ${rule(1372)}
     ${text(64,1420,'訂閱額度 · 已使用百分比',25,400,colors.muted)}
     ${text(1008,1420,'Asia/Taipei',25,400,colors.muted,'end')}
@@ -109,4 +118,4 @@ await writeFile(temporary,rendered.asPng());
 await rename(temporary,output);
 await writeFile(output.replace(/\.png$/i,'')+'.svg',svg);
 console.log(JSON.stringify({output,width:rendered.width,height:rendered.height,referenceTime:now.toISOString(),mode:at,
-  states:Object.fromEntries(['codex','claude'].map(id=>[id,normalizeProvider(records,id,now,inputError).state]))},null,2));
+  states:Object.fromEntries(cards.map(r=>[r.workerId || r.provider,normalizeProvider([r],r.provider,now,inputError).state]))},null,2));

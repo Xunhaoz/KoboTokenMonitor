@@ -5,6 +5,7 @@ const errors = new Set([
   "rate_limited",
   "timeout",
   "query_failed",
+  "worker_unavailable",
 ]);
 const date = (value) =>
   timestamp(value) === null ? null : new Date(value).toISOString();
@@ -13,7 +14,7 @@ const date = (value) =>
 export function dashboardModel(
   records,
   health,
-  { now = Date.now(), revision = 0, interval = 60000, healthy = false } = {},
+  { now = Date.now(), revision = 0, interval = 60000, healthy = false, workers = null } = {},
 ) {
   return {
     schemaVersion: 1,
@@ -28,8 +29,9 @@ export function dashboardModel(
       collecting: health.running === true,
       renderError: health.renderError ? "update_failed" : null,
     },
-    providers: ["codex", "claude"].map((id) => {
-      const record = records.find((record) => record?.provider === id) || {};
+    providers: (workers || (records.some(r => r?.workerId) ? records.map(r => ({ id: r.workerId, provider: r.provider, name: r.name })) : ["codex", "claude"].map(id => ({ id, provider: id })))).map((spec) => {
+      const id = spec.provider;
+      const record = records.find((record) => record?.workerId ? record.workerId === spec.id : record?.provider === spec.id) || {};
       const error = record.error
         ? errors.has(record.error.code)
           ? record.error.code
@@ -57,8 +59,9 @@ export function dashboardModel(
             : null,
       });
       return {
-        id,
-        name: id === "codex" ? "Codex" : "Claude",
+        id: spec.id,
+        provider: id,
+        name: spec.name || (id === "codex" ? "Codex" : "Claude"),
         usage: {
           state: model.state,
           caption: model.caption,

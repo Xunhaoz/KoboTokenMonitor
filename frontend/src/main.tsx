@@ -15,15 +15,12 @@ import { Button } from "./components/ui/button";
 import "./styles.css";
 
 const navigation = [
-  { to: "/usage", label: "我的用量" },
-  { to: "/cli", label: "CLI 狀態" },
   { to: "/overview", label: "綜合總覽" },
 ];
 
 function App() {
   const { pathname } = useLocation();
-  const view =
-    pathname === "/usage" ? "usage" : pathname === "/cli" ? "cli" : "overview";
+  const view = "overview";
   const { data, error, loading, refresh, receivedAt } = useDashboard();
   const [tick, setTick] = useState(Date.now());
   useEffect(() => {
@@ -42,7 +39,7 @@ function App() {
     ? data
       ? "連線中斷，顯示上次資料"
       : "無法連線，請重新整理"
-    : data?.service.renderError && view !== "usage"
+    : data?.service.renderError
       ? "Kobo 圖片產生失敗"
       : null;
 
@@ -116,6 +113,7 @@ function App() {
         }
         aria-busy={!data && loading}
       >
+        {data?.providers.length === 0 && <div className="empty-state">尚未設定 worker</div>}
         {data
           ? data.providers.map((provider) => (
               <ProviderCard
@@ -140,7 +138,7 @@ createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
     <Routes>
       <Route path="/" element={<Navigate to="/overview" replace />} />
-      {["/overview", "/usage", "/cli"].map((path) => (
+      {["/overview"].map((path) => (
         <Route key={path} path={path} element={<App />} />
       ))}
       <Route path="*" element={<Navigate to="/overview" replace />} />

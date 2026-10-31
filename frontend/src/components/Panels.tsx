@@ -129,6 +129,7 @@ const collectionLabels = {
   rate_limited: "限流",
   timeout: "逾時",
   query_failed: "查詢失敗",
+  worker_unavailable: "Worker 離線",
 };
 const authLabel = (value: boolean | null) =>
   value === null ? "未檢查" : value ? "通過" : "失敗";

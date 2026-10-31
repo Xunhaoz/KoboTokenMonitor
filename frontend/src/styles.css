@@ -640,3 +640,14 @@ button:focus-visible {
     transition: none !important;
   }
 }
+
+/* Workers stay in configured order at every viewport size. */
+.dashboard-shell { max-width: 900px; }
+.dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+.view-tabs { grid-template-columns: 1fr; max-width: 160px; }
+.view-overview .provider-header { grid-template-columns: minmax(0, 1fr) auto auto; }
+.provider-header h2 { overflow-wrap: anywhere; }
+@media (max-width: 360px) {
+  .view-overview .quota-heading { flex-wrap: wrap; }
+  .cli-summary { grid-template-columns: 1fr; }
+}

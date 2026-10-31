@@ -12,14 +12,16 @@ export type CollectionState =
   | "authentication_required"
   | "rate_limited"
   | "timeout"
-  | "query_failed";
+  | "query_failed"
+  | "worker_unavailable";
 export interface UsageWindow {
   usedPercent: number | null;
   resetsAt: string | null;
   windowMinutes: number | null;
 }
 export interface Provider {
-  id: "codex" | "claude";
+  id: string;
+  provider: "codex" | "claude";
   name: string;
   usage: {
     state: UsageState;

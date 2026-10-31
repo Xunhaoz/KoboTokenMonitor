@@ -1,0 +1,5 @@
+[
+  { "id": "codex-1", "name": "Codex 1", "provider": "codex", "url": "http://codex-1:8080" },
+  { "id": "codex-2", "name": "Codex 2", "provider": "codex", "url": "http://codex-2:8080" },
+  { "id": "claude-1", "name": "Claude 1", "provider": "claude", "url": "http://claude-1:8080" }
+]

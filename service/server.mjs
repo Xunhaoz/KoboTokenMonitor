@@ -3,6 +3,7 @@ import { readFile, writeFile, rename, mkdir, realpath } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Collector } from "./collector.mjs";
+import { RemoteCollector, validateWorkers } from "./workers.mjs";
 import { run } from "./process.mjs";
 import { dashboardModel } from "./dashboard-model.mjs";
 
@@ -18,13 +19,14 @@ export function createApp({
   interval = 60000,
   timeout = 45000,
   collector = new Collector({ timeout }),
+  workers = null,
   execute = run,
   now = Date.now,
 }) {
   let running = false,
     timer,
     stopped = false;
-  let records = [];
+  let records = workers ? workers.map(w => ({ workerId: w.id, name: w.name, provider: w.provider })) : [];
   let revision = 0,
     imageRevision = -1,
     imageMinute = null,
@@ -44,7 +46,7 @@ export function createApp({
       const data = JSON.parse(await readFile(input, "utf8"));
       if (Array.isArray(data)) {
         collector.restore(data);
-        records = data;
+        records = workers ? workers.map(w => ({ ...(data.find(r => r?.workerId === w.id && r.provider === w.provider) || {}), workerId: w.id, name: w.name, provider: w.provider })) : data;
       }
     } catch {}
   }
@@ -97,11 +99,12 @@ export function createApp({
     health.running = true;
     try {
       const nextRecords = await Promise.all(
-        ["codex", "claude"].map(async (id) => {
+        (workers ? workers.map(w => w.id) : ["codex", "claude"]).map(async (id) => {
           try {
             return await collector.collect(id);
           } catch {
-            return { provider: id, error: { code: "query_failed" } };
+            const spec = workers?.find(w => w.id === id);
+            return { provider: spec?.provider || id, ...(spec ? { workerId: id, name: spec.name } : {}), error: { code: "query_failed" } };
           }
         }),
       );
@@ -110,7 +113,7 @@ export function createApp({
       revision++;
       health.providers = Object.fromEntries(
         records.map((r) => [
-          r.provider,
+          r.workerId || r.provider,
           {
             status:
               r.error?.code ||
@@ -162,6 +165,7 @@ export function createApp({
       revision,
       interval,
       healthy: healthy(),
+      workers,
     });
   }
   const server = createServer(async (req, res) => {
@@ -302,21 +306,9 @@ if (
   const interval = number("POLL_INTERVAL_SECONDS", 60, 10) * 1000;
   const timeout = number("CLI_TIMEOUT_SECONDS", 45, 1) * 1000;
   const dataDir = resolve(process.env.DATA_DIR || "data");
-  for (const path of [
-    process.env.CODEX_HOME,
-    process.env.CLAUDE_CONFIG_DIR,
-    process.env.XDG_CONFIG_HOME,
-  ]) {
-    if (path) await mkdir(path, { recursive: true, mode: 0o700 });
-  }
-  const collector = new Collector({
-    timeout,
-    authInterval: number("AUTH_CHECK_INTERVAL_SECONDS", 86400, 300) * 1000,
-    codexbar: process.env.CODEXBAR_BIN || "codexbar",
-    codex: process.env.CODEX_BIN || "codex",
-    cwd: process.env.HOME,
-  });
-  const app = createApp({ dataDir, interval, timeout, collector });
+  const workers = validateWorkers(JSON.parse(await readFile(resolve(process.env.WORKERS_CONFIG || "workers.json"), "utf8")));
+  const collector = new RemoteCollector(workers, { timeout: number("WORKER_TIMEOUT_SECONDS", 5, 1) * 1000 });
+  const app = createApp({ dataDir, interval, timeout, collector, workers });
   await app.initialize();
   app.server.listen(
     number("PORT", 8080, 0),

@@ -5,7 +5,7 @@ RUN npm ci --ignore-scripts
 COPY frontend/ ./frontend/
 RUN npm run build
 
-FROM node:24-bookworm-slim
+FROM node:24-bookworm-slim AS worker
 ARG TARGETARCH
 ARG CODEXBAR_VERSION=0.80.0
 ARG CODEX_VERSION=0.164.0
@@ -41,6 +41,26 @@ ENV NODE_ENV=production HOME=/auth CODEX_HOME=/auth/.codex \
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=180s --retries=3 \
+    CMD node -e "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "service/worker.mjs"]
+
+# The master contains no account CLIs and receives no auth volume.
+FROM node:24-bookworm-slim AS master
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk tini \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+COPY render-dashboard.mjs usage-model.mjs ./
+COPY service/ ./service/
+COPY workers.json ./
+COPY --from=frontend-build /build/frontend/dist ./frontend/dist
+RUN mkdir /data && chown node:node /data
+ENV NODE_ENV=production DATA_DIR=/data PORT=8080
+USER node
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "service/server.mjs"]

@@ -1,24 +1,57 @@
 name: kobo-token-monitor
+x-worker: &worker
+  image: kobo-token-worker:local
+  build:
+    context: .
+    target: worker
+  restart: unless-stopped
+  stop_grace_period: 10s
 services:
-  monitor:
-    image: kobo-token-monitor:local
+  master:
+    image: kobo-token-master:local
     build:
       context: .
-      args:
-        CODEXBAR_VERSION: "0.80.0"
-        CODEX_VERSION: "0.164.0"
-        CLAUDE_VERSION: "2.1.310"
+      target: master
     restart: unless-stopped
     environment:
+      WORKERS_CONFIG: /app/workers.json
       POLL_INTERVAL_SECONDS: "60"
-      CLI_TIMEOUT_SECONDS: "45"
-      AUTH_CHECK_INTERVAL_SECONDS: "86400"
+      WORKER_TIMEOUT_SECONDS: "5"
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8080}:8080"
     volumes:
-      - auth:/auth
+      - ./workers.json:/app/workers.json:ro
       - data:/data
     stop_grace_period: 10s
+  codex-1:
+    <<: *worker
+    environment:
+      WORKER_ID: codex-1
+      PROVIDER: codex
+    volumes:
+      - codex-1-auth:/auth
+      - codex-1-data:/data
+  codex-2:
+    <<: *worker
+    environment:
+      WORKER_ID: codex-2
+      PROVIDER: codex
+    volumes:
+      - codex-2-auth:/auth
+      - codex-2-data:/data
+  claude-1:
+    <<: *worker
+    environment:
+      WORKER_ID: claude-1
+      PROVIDER: claude
+    volumes:
+      - claude-1-auth:/auth
+      - claude-1-data:/data
 volumes:
-  auth:
   data:
+  codex-1-auth:
+  codex-1-data:
+  codex-2-auth:
+  codex-2-data:
+  claude-1-auth:
+  claude-1-data:
