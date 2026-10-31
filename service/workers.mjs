@@ -18,13 +18,12 @@ export function validateWorkers(value) {
 }
 const errors = new Set(['authentication_required', 'rate_limited', 'timeout', 'query_failed', 'worker_unavailable']);
 export function cleanRecord(record, spec) {
-  const clean = sanitize(record, spec.provider) || { provider: spec.provider };
+  const clean = sanitize(record, spec.provider) || { provider: spec.provider, account: null };
   // Account plan/identity labels are not required by the worker protocol.
   if (clean.usage) delete clean.usage.loginMethod;
   const collection = {};
-  for (const key of ['lastAttemptAt', 'lastSuccessAt', 'lastAuthCheckAt', 'nextAttemptAt'])
+  for (const key of ['lastAttemptAt', 'lastSuccessAt', 'nextAttemptAt'])
     collection[key] = timestamp(record?.collection?.[key]) === null ? null : new Date(record.collection[key]).toISOString();
-  collection.authCheckSucceeded = typeof record?.collection?.authCheckSucceeded === 'boolean' ? record.collection.authCheckSucceeded : null;
   return { ...clean, workerId: spec.id, name: spec.name, collection,
     ...(record?.error ? { error: { code: errors.has(record.error.code) ? record.error.code : 'query_failed' } } : {}),
     retained: record?.retained === true };

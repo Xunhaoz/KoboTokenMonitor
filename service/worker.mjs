@@ -60,8 +60,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const app = createWorker({ spec, dataDir: resolve(process.env.DATA_DIR || 'data'),
     interval: seconds('POLL_INTERVAL_SECONDS', 60, 10),
     collector: new Collector({ timeout: seconds('CLI_TIMEOUT_SECONDS', 45, 1),
-      authInterval: seconds('AUTH_CHECK_INTERVAL_SECONDS', 86400, 300), cwd: process.env.HOME,
-      codexbar: process.env.CODEXBAR_BIN || 'codexbar', codex: process.env.CODEX_BIN || 'codex' }) });
+      cwd: process.env.HOME,
+      codexbar: process.env.CODEXBAR_BIN || 'codexbar' }) });
   await app.initialize();
   app.server.listen(Number(process.env.PORT || 8080), process.env.HOST || '0.0.0.0');
   void app.start();

@@ -1,4 +1,4 @@
-import { normalizeProvider, timestamp } from "../usage-model.mjs";
+import { normalizeProvider, timestamp, accountName, displayName } from "../usage-model.mjs";
 
 const errors = new Set([
   "authentication_required",
@@ -10,7 +10,7 @@ const errors = new Set([
 const date = (value) =>
   timestamp(value) === null ? null : new Date(value).toISOString();
 
-// This public representation deliberately excludes raw CLI output and identity fields.
+// This public representation deliberately excludes raw CLI output and full email addresses.
 export function dashboardModel(
   records,
   health,
@@ -61,7 +61,8 @@ export function dashboardModel(
       return {
         id: spec.id,
         provider: id,
-        name: spec.name || (id === "codex" ? "Codex" : "Claude"),
+        account: accountName(record),
+        name: displayName(record, spec.name || (id === "codex" ? "Codex" : "Claude")),
         usage: {
           state: model.state,
           caption: model.caption,
@@ -78,11 +79,6 @@ export function dashboardModel(
           status: error || (date(collection.lastSuccessAt) ? "ok" : "unknown"),
           lastAttemptAt: date(collection.lastAttemptAt),
           lastSuccessAt: date(collection.lastSuccessAt),
-          lastAuthCheckAt: date(collection.lastAuthCheckAt),
-          authCheckSucceeded:
-            typeof collection.authCheckSucceeded === "boolean"
-              ? collection.authCheckSucceeded
-              : null,
           nextAttemptAt: date(collection.nextAttemptAt),
         },
       };

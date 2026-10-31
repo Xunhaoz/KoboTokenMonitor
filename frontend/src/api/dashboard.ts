@@ -23,6 +23,7 @@ export interface Provider {
   id: string;
   provider: "codex" | "claude";
   name: string;
+  account: string | null;
   usage: {
     state: UsageState;
     caption: string;
@@ -36,8 +37,6 @@ export interface Provider {
     status: CollectionState;
     lastAttemptAt: string | null;
     lastSuccessAt: string | null;
-    lastAuthCheckAt: string | null;
-    authCheckSucceeded: boolean | null;
     nextAttemptAt: string | null;
   };
 }

@@ -33,3 +33,19 @@ export function normalizeProvider(records, id, now, inputError = null) {
     resetPrimary:error&&!retained?null:usage.primary?.resetsAt,
     resetSecondary:error&&!retained?null:usage.secondary?.resetsAt};
 }
+
+// Only the local part is public; persisted snapshots already contain account.
+export function accountName(record) {
+  const email = record?.usage?.accountEmail;
+  if (email !== undefined) {
+    if (typeof email !== 'string' || !/^[^\s@]+@[^\s@]+$/.test(email.trim())) return null;
+    return email.trim().split('@')[0];
+  }
+  const account = record?.account;
+  return typeof account === 'string' && /^[^\s@]+$/.test(account) ? account : null;
+}
+
+export function displayName(record, fallback) {
+  const account = accountName(record);
+  return ['codex', 'claude'].includes(record?.provider) && account ? `${record.provider} - ${account}` : fallback;
+}

@@ -1,3 +1,4 @@
+import { displayName } from './usage-model.mjs';
 import { Resvg } from '@resvg/resvg-js';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -81,7 +82,7 @@ const available = 1138;
 const cell = available / Math.max(cards.length, 1);
 const scale = Math.min(1, cell * 0.95 / 400);
 const stack = cards.map((r, i) => {
-  const name = r.name || (r.provider === 'codex' ? 'Codex' : 'Claude');
+  const name = displayName(r, r.name || (r.provider === 'codex' ? 'Codex' : 'Claude'));
   const x = (1072 - 1072 * scale) / 2;
   const y = 222 + i * cell + (cell - 400 * scale) / 2;
   return `<g transform="translate(${x} ${y}) scale(${scale})">${provider(r, name, 20, r.provider === 'codex' ? colors.green : colors.orange)}</g>` + (i < cards.length - 1 ? rule(222 + (i + 1) * cell) : '');

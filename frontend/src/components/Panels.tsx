@@ -131,9 +131,6 @@ const collectionLabels = {
   query_failed: "查詢失敗",
   worker_unavailable: "Worker 離線",
 };
-const authLabel = (value: boolean | null) =>
-  value === null ? "未檢查" : value ? "通過" : "失敗";
-
 function CliDetails({
   provider,
   compact,
@@ -167,22 +164,6 @@ function CliDetails({
           </dd>
         </div>
       )}
-      <div>
-        <dt>認證檢查</dt>
-        <dd>
-          <StatusBadge
-            tone={
-              state.authCheckSucceeded === null
-                ? "neutral"
-                : state.authCheckSucceeded
-                  ? "good"
-                  : "bad"
-            }
-          >
-            {authLabel(state.authCheckSucceeded)}
-          </StatusBadge>
-        </dd>
-      </div>
       <>
         <div>
           <dt>最近成功</dt>

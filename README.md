@@ -8,7 +8,7 @@ codex-2  ─┼─ HTTP /snapshot ← master → /overview、/api/dashboard、/u
 claude-1 ─┘
 ```
 
-Worker 各自保存登入、用量快照、排程與認證恢復狀態。master 不執行 CLI、不掛載登入 volume；沒有額外資料庫或訊息佇列。每個帳號以唯一 worker ID 區分，同 provider 的不同帳號不會互相覆蓋。不同帳號的百分比不相加。
+Worker 各自保存登入、用量快照、排程與查詢狀態。master 不執行 CLI、不掛載登入 volume；沒有額外資料庫或訊息佇列。每個帳號以唯一 worker ID 區分，同 provider 的不同帳號不會互相覆蓋。不同帳號的百分比不相加。
 
 ## Docker 部署
 
@@ -71,16 +71,16 @@ master 預設綁定主機 `127.0.0.1:8080`，可透過 `.env` 的 `BIND_ADDRESS`
 
 | master 路徑 | 用途 |
 | --- | --- |
-| `/`、`/overview` | 唯一的綜合總覽 tab，每個 worker 一張卡，由上往下排列 |
+| `/`、`/overview` | 唯一的綜合總覽 tab，每個 worker 一張卡，桌面每列兩張，窄於 768px 改單欄 |
 | `/usage`、`/cli` | 舊連結導向 `/overview` |
 | `/api/dashboard` | 用量、收集狀態、服務資訊；`providers[].id` 為 worker ID，`provider` 為服務種類 |
 | `/usage.png` | 固定 **1072 × 1448** 的 PNG |
 | `/status` | `providers` 依 worker ID 分組的狀態 |
 | `/healthz` | master 排程與產圖健康檢查 |
 
-每個 worker 提供內部 `/snapshot` 與 `/healthz`，不提供網頁或 PNG。`/snapshot` 僅讀取快照，不觸發 CLI。master 驗證 worker ID 與 provider，重新篩選公開欄位；不提供 token、email、登入檔或原始 CLI 輸出。顯示名稱由你設定，請不要填入敏感資訊。
+每個 worker 提供內部 `/snapshot` 與 `/healthz`，不提供網頁或 PNG。`/snapshot` 僅讀取快照，不觸發 CLI。master 驗證 worker ID 與 provider，重新篩選公開欄位；不提供 token、完整 email、登入檔或原始 CLI 輸出。`record.account` 為 `usage.accountEmail` 的 @ 前字串，未知時為 null；master 的 `providers[].account` 同步提供此欄位。網頁與 PNG 標題為 `codex - {{account}}` 或 `claude - {{account}}`，帳號未知時使用設定名稱。舊快照仍可讀取。
 
-前端卡片包含用量、查詢、認證檢查、最近成功與重試狀態。網頁可自然往下捲動；PNG 在原本尺寸內，依 worker 數量等比例縮小並垂直堆疊，包含所有帳號，絕不增加圖片高度。Worker 越多文字越小。PNG 已測試 0、1、3、6 個 worker 的固定尺寸；實際電子看板的可讀性仍需裝置確認。
+前端卡片包含用量、查詢、最近成功與重試狀態。網頁可自然往下捲動；PNG 在原本尺寸內，依 worker 數量等比例縮小並垂直堆疊，包含所有帳號，絕不增加圖片高度。Worker 越多文字越小。PNG 已測試 0、1、3、6 個 worker 的固定尺寸；實際電子看板的可讀性仍需裝置確認。
 
 前端依 master 輪詢間隔重新讀取資料，背景分頁暫停更新；重新整理不執行 CLI。讀取失敗保留舊畫面。`0%` 與未知 `—` 分別呈現。Worker 離線時 master 保留該 worker 上次資料與原測量時間，不影響其他帳號。資料超過十分鐘標示過期。master 健康並不代表每個帳號都已登入，請查看各張卡片。
 
@@ -96,12 +96,11 @@ PNG GET／HEAD 會更新分鐘時鐘，同分鐘共用快取；新資料使快�
 | `WORKER_ID`、`PROVIDER` | worker | 必填 |
 | `WORKER_NAME` | worker 內部快照名稱 | worker ID；總覽名稱由 master 清單決定 |
 | `CLI_TIMEOUT_SECONDS` | worker | 45 |
-| `AUTH_CHECK_INTERVAL_SECONDS` | worker | 86400 |
 | `DATA_DIR` | 兩者 | Docker `/data`，本機 `data` |
 
 master 啟動即並行讀取所有 worker，預設每分鐘更新。worker 啟動即查詢，完成後等待輪詢間隔，不重疊執行。兩層各自輪詢，總覽可能落後一個 master 輪詢週期。
 
-沿用既有認證流程：Codex 平常使用 CodexBar CLI source，每日與認證失敗時透過 App Server `account/read`、`refreshToken: true` 嘗試恢復；Claude 平常使用 Auto source，每日與認證失敗時使用 CLI source。這些流程不發送模型提示詞，也不保證每次都能恢復登入。認證失敗最多恢復一次、重查一次，之後退避十五分鐘；429 遵守可解析的 Retry-After，其他錯誤採 2、4、8、15 分鐘退避。每個 worker 獨立處理。
+每輪僅查詢一次 usage：Codex 使用 CLI source，Claude 使用 Auto source。不再額外檢查或刷新認證，也不因登入失敗立即重查。登入失敗退避十五分鐘；429 遵守可解析的 Retry-After，其他錯誤採 2、4、8、15 分鐘退避。每個 worker 獨立處理，失敗時保留上次用量與帳號。
 
 ## 本機開發與驗證
 
@@ -127,4 +126,4 @@ node render-dashboard.mjs --input my-usage.local.json --at now --output output/u
 
 產圖使用 `@resvg/resvg-js`，輸出 PNG 與 SVG；Linux 需 Noto CJK 字型，或使用 `KOBO_FONT` 指定字型檔。預設範例的時間取最新測量時間，正式產圖使用 `--at now`。
 
-目前 30 個測試涵蓋原收集與認證流程、三個模擬 worker 到 master 的 HTTP 整合、同 provider 的帳號隔離、離線保留、重啟快照、身分不符拒收、公開欄位篩選與固定 PNG 尺寸。前端已通過 TypeScript 與正式建置，Compose 設定已驗證；新版 Docker 映像與三個真實帳號登入尚未實測。
+測試涵蓋用量查詢、退避、帳號截取與保留、多 worker HTTP 整合、公開欄位篩選及固定 PNG 尺寸。執行 `npm test` 與 `npm run build` 驗證。
